@@ -233,21 +233,21 @@ void ADXL345_getRawData(int16_t* x, int16_t* y, int16_t* z){
 	SPI_CS_high();
 }
 
-// get acceleration data as float in SI unit (m/s^2)
+// get acceleration data as float in SI unit (m/s²)
 void ADXL345_getAccelerationSI(float* x_f, float* y_f, float* z_f){
 	int16_t x, y, z;
 	ADXL345_getRawData(&x, &y, &z);
-	// if Full Resolution is enabled, the scale factor is always 4mg/LSB = 0.03924 (m/s^2)/LSB regardless of the range setting
+	// if Full Resolution is enabled, the scale factor is always 4mg/LSB = 0.03924 (m/s²)/LSB regardless of the range setting
 	if(ADXL345_currentFullRes){
 		*x_f = x * 0.004;
 		*y_f = y * 0.004;
 		*z_f = z * 0.004;
 	// if Full Resolution is disabled, the scale factor depends on the range setting and is calculated as follows:
-	// (max_g - min_g) / 2^(10bit) * 9.81 (m/s^2)/g
+	// (max_g - min_g) / 2^(10bit) * 9.81 (m/s²)/g
 	// e.g. with the +/-2g setting:
-	// (+2g - (-2g)) / 2^(10bit) * 9.81 (m/s^2)/g = 0.0383 (m/s^2)/bit
+	// (+2g - (-2g)) / 2^(10bit) * 9.81 (m/s²)/g = 0.0383 (m/s²)/bit
 	}else{
-		float scale_factor;
+		float scale_factor = 0;
 		switch (ADXL345_currentRange){
 			case ADXL345_range_2g:
 				scale_factor = 0.03830; 
@@ -264,16 +264,55 @@ void ADXL345_getAccelerationSI(float* x_f, float* y_f, float* z_f){
 			default:
 				break;
 		}
-		*x_f = x * scale_factor;
-		*y_f = y * scale_factor;
-		*z_f = z * scale_factor;
+		*x_f = ((float) x) * scale_factor;
+		*y_f = ((float) y) * scale_factor;
+		*z_f = ((float) z) * scale_factor;
 	}
 }
 // read acceleration and calculate the tilt (roll and yaw), NOTE: works only when the sensor is static (no motion)
 void ADXL345_getTiltAnglesDegrees(float* roll, float* pitch){
 	float x, y, z;
 	ADXL345_getAccelerationSI(&x, &y, &z);
-	z *= z; // since we will need z^2 twice, computing it here makes the calculation more efficient
+	z *= z; // since we will need z² twice, computing it here makes the calculation more efficient
 	*roll = 180.0 / M_PI * atan2( y, sqrt( x*x + z ) ); // compute roll angle and convert from radians to degrees
-	*pitch = 180.0 / M_PI * atan2( x, sqrt( y*y + z ); // compute roll angle and convert from radians to degrees
+	*pitch = 180.0 / M_PI * atan2( x, sqrt( y*y + z ) ); // compute roll angle and convert from radians to degrees
+}
+
+/*	configure the activity detection functionality (note: the activity interrupt still has to be enabled afterwards)
+	arguments:	threshold	- value in m/s²
+				ac			- true for AC-coupling, false for DC-coupling (see data sheet page 24)
+				axis		- the axis/axes that participate */
+void ADXL345_configActivityDetection(float threshold, bool ac, ADXL_345_Activity_Axis axis){
+		uint8_t regVal = ADXL345_readRegister(0x27); // read ACT_INACT_CTL register
+		_delay_loop_1(3); // according to ADXL345 data sheet, CS must be high during at least 150ns between transmissions
+						  // with a maximum CPU speed of 20Mhz this delay amounts to 150ns, so it is always >=150ns for all F_CPU
+		regVal &= 0b00001111; // clear all activity-related bits
+		regVal |= ((ac<<7) | axis); // configure ac/dc-bit and axis-enable-bits
+		ADXL345_writeRegister(0x27, regVal); // write back modified register value
+		_delay_loop_1(3);
+		if( threshold < 0 ) threshold = fabs(threshold);
+		// scale factor for the threshold value is 62.5mg/LSB = 0.613125 (m/s²)/LSB so 1.63099 LSB/(m/s²)
+		regVal = (uint8_t) (threshold*1.63099);
+		ADXL345_writeRegister(0x24, regVal); // set activity threshold
+}
+
+/*	configure the inactivity detection functionality (note: the inactivity interrupt still has to be enabled afterwards)
+	arguments:	threshold	- value in m/s²
+				ac			- true for AC-coupling, false for DC-coupling (see data sheet page 24)
+				axis		- the axis/axes that participate
+				inact_time	- amount of time in seconds that acceleration must be less than the threshold for inactivity to be declared */
+void ADXL345_configInactivityDetection(float threshold, bool ac, ADXL_345_Inactivity_Axis axis, uint8_t inact_time){
+		uint8_t regVal = ADXL345_readRegister(0x27); // read ACT_INACT_CTL register
+		_delay_loop_1(3); // according to ADXL345 data sheet, CS must be high during at least 150ns between transmissions
+						  // with a maximum CPU speed of 20Mhz this delay amounts to 150ns, so it is always >=150ns for all F_CPU
+		regVal &= 0b11110000; // clear all inactivity-related bits
+		regVal |= ((ac<<3) | axis); // configure ac/dc-bit and axis-enable-bits
+		ADXL345_writeRegister(0x27, regVal); // write back modified register value
+		_delay_loop_1(3);
+		if( threshold < 0 ) threshold = fabs(threshold);
+		// scale factor for the threshold value is 62.5mg/LSB = 0.613125 (m/s²)/LSB so 1.63099 LSB/(m/s²)
+		regVal = (uint8_t) (threshold*1.63099);
+		ADXL345_writeRegister(0x25, regVal); // set inactivity threshold
+		_delay_loop_1(3);
+		ADXL345_writeRegister(0x26, inact_time); // set inactivity time threshold value
 }
