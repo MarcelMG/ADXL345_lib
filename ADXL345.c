@@ -48,6 +48,7 @@ void ADXL345_writeRegisterBit(uint8_t regAddr, uint8_t bitPos, bool bitVal){
 					  // with a maximum CPU speed of 20Mhz this delay amounts to 150ns, so it is always >=150ns for all F_CPU
 	regVal &=~ (1<<bitPos); // clear bit
 	regVal |= (bitVal<<bitPos); // OR bit with value (i.e. either set or clear it depending on bitVal)
+	ADXL345_writeRegister(regAddr, regVal); // write back modified register value
 }
 
 void ADXL345_enterStandbyMode(){

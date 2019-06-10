@@ -22,8 +22,8 @@ typedef enum {	ADXL345_overrunInterrupt,	// 0
 				ADXL345_doubleTapInterrupt,	// 5
 				ADXL345_singleTapInterrupt,	// 6
 				ADXL345_dataReadyInterrupt	/* 7 */	}ADXL345_interrupt;
-typedef enum {	ActiveLow,
-			    ActiveHigh }ADXL345_interruptPolarity;
+typedef enum {	ActiveHigh,
+			    ActiveLow }ADXL345_interruptPolarity;
 typedef enum {	ADXL345_range_2g, // value is: 0
 				ADXL345_range_4g, // 1
 				ADXL345_range_8g, // 2
