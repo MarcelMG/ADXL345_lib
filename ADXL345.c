@@ -31,7 +31,7 @@ uint8_t ADXL345_readRegister(uint8_t regAddr){
 }
 // check a single bit inside a register of the ADXL345
 bool ADXL345_readRegisterBit(uint8_t regAddr, uint8_t bitPos){
-	return ( (1<<bitPos) & ADXL345_readRegister(regAddr) );
+	return (bool) ( (1<<bitPos) & ADXL345_readRegister(regAddr) );
 }
 
 // write to a register of the ADXL345
@@ -61,6 +61,8 @@ ADXL345_writeRegisterBit(0x2D, 3, 1); // set Measure-bit in POWER_CTL register (
 
 // configure the sleep mode sampling frequency and enter sleep mode
 void ADXL345_enterSleepMode(ADXL345_sleepModeFrequency freq){
+	// IMPORTANT NOTE: AS IT SEEMS, THE MEASUREMENT-MODE HAS TO BE ENABLED FOR SLEEP MODE TO WORK... it is not explained in the data sheet!
+	ADXL345_enterMeasurementMode();
 	uint8_t regVal = ADXL345_readRegister(0x2D); // 0x2D = POWER_CTL register
 	_delay_loop_1(3); // according to ADXL345 data sheet, CS must be high during at least 150ns between transmissions
 						// with a maximum CPU speed of 20Mhz this delay amounts to 150ns, so it is always >=150ns for all F_CPU
@@ -103,6 +105,7 @@ void ADXL345_setInterrupt(ADXL345_interrupt interrupt, bool interruptVal){
 }
 
 // check a certain interrupt flag, argument: interrupt source to be checked; return value: true if the specified interrupt has been triggered, false if not
+// this function also clears the interrupt flag by reading the INT_SOURCE register
 bool ADXL345_checkInterrupt(ADXL345_interrupt interrupt){
 	return ADXL345_readRegisterBit(0x30, interrupt);
 }
