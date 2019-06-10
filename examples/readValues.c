@@ -24,8 +24,8 @@ int main(void)
     float x, y, z, roll, pitch;
 	
 	while (1){
-		ADXL345_getAccelerationSI(&x, &y, &z); // get accelerations in m/s²
-		ADXL345_getTiltAnglesDegrees(&roll, &pitch); // get roll and pitch inclination in °
+		ADXL345_getAccelerationSI(&x, &y, &z); // get accelerations in m/sÂ²
+		ADXL345_getTiltAnglesDegrees(&roll, &pitch); // get roll and pitch inclination in Â°
 		printf("x= %2.3f y= %2.3f z= %2.3f roll= %2.3f pitch= %2.3f\n", x, y, z, roll, pitch);
     }
 }
